@@ -1,6 +1,7 @@
 import pygame
 import time
 import random
+import requests
 
 pygame.init()
 
@@ -17,11 +18,20 @@ block_size = 10
 speed = 15
 
 font = pygame.font.SysFont("bahnschrift", 25)
+headline_font = pygame.font.SysFont("comicsansms", 15)
 
 window = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Snake Game")
+pygame.display.set_caption("Snake Game with News Headlines")
 
 clock = pygame.time.Clock()
+
+def fetch_headlines():
+    url = "https://newsapi.org/v2/top-headlines?country=us&apiKey=YOUR_API_KEY"
+    response = requests.get(url)
+    data = response.json()
+    articles = data.get("articles", [])
+    headlines = [article["title"] for article in articles if "title" in article]
+    return headlines
 
 def draw_snake(block_size, snake_list):
     for x in snake_list:
@@ -46,6 +56,9 @@ def game():
 
     food_x = round(random.randrange(0, width - block_size) / 10.0) * 10.0
     food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
+
+    headlines = fetch_headlines()
+    current_headline = random.choice(headlines) if headlines else "No headlines available"
 
     while not game_over:
 
@@ -89,9 +102,7 @@ def game():
         window.fill(blue)
         pygame.draw.rect(window, green, [food_x, food_y, block_size, block_size])
         
-        snake_head = []
-        snake_head.append(x)
-        snake_head.append(y)
+        snake_head = [x, y]
         snake_list.append(snake_head)
         
         if len(snake_list) > length:
@@ -103,12 +114,17 @@ def game():
 
         draw_snake(block_size, snake_list)
         display_score(length - 1)
+
+        headline_text = headline_font.render(current_headline, True, white)
+        window.blit(headline_text, [10, height - 30])
+        
         pygame.display.update()
 
         if x == food_x and y == food_y:
             food_x = round(random.randrange(0, width - block_size) / 10.0) * 10.0
             food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
             length += 1
+            current_headline = random.choice(headlines) if headlines else "No headlines available"
 
         clock.tick(speed)
 
