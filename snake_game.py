@@ -27,11 +27,14 @@ clock = pygame.time.Clock()
 
 def fetch_headlines():
     url = "https://newsapi.org/v2/top-headlines?country=us&apiKey=YOUR_API_KEY"
-    response = requests.get(url)
-    data = response.json()
-    articles = data.get("articles", [])
-    headlines = [article["title"] for article in articles if "title" in article]
-    return headlines
+    try:
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        articles = data.get("articles", [])
+        headlines = [article["title"] for article in articles if "title" in article]
+        return headlines
+    except:
+        return ["Unable to fetch news"]
 
 def draw_snake(block_size, snake_list):
     for x in snake_list:
@@ -40,6 +43,11 @@ def draw_snake(block_size, snake_list):
 def display_score(score):
     value = font.render("Score: " + str(score), True, white)
     window.blit(value, [10, 10])
+
+def display_timer(start_time):
+    elapsed_time = int(time.time() - start_time)
+    timer_surface = font.render(f"Time: {elapsed_time}s", True, white)
+    window.blit(timer_surface, [width - 140, 10])
 
 def game():
     game_over = False
@@ -60,13 +68,19 @@ def game():
     headlines = fetch_headlines()
     current_headline = random.choice(headlines) if headlines else "No headlines available"
 
+    start_time = time.time()
+
     while not game_over:
 
         while game_close:
             window.fill(blue)
+            elapsed_time = int(time.time() - start_time)
             message = font.render("You Lost! Press Q-Quit or C-Play Again", True, red)
+            score_text = font.render(f"Final Score: {length - 1}", True, white)
+            time_text = font.render(f"Time Survived: {elapsed_time}s", True, white)
             window.blit(message, [width / 6, height / 3])
-            display_score(length - 1)
+            window.blit(score_text, [width / 3, height / 2])
+            window.blit(time_text, [width / 3, height / 2 + 30])
             pygame.display.update()
 
             for event in pygame.event.get():
@@ -114,6 +128,7 @@ def game():
 
         draw_snake(block_size, snake_list)
         display_score(length - 1)
+        display_timer(start_time)
 
         headline_text = headline_font.render(current_headline, True, white)
         window.blit(headline_text, [10, height - 30])
