@@ -21,3 +21,10 @@ Power-ups: Add special items for the snake to consume that give bonus points or 
 Obstacles: Introduce barriers on the screen that grow as the player progresses, making the game more challenging.
 
 Custom Skins: Allow players to choose snake colors or textures.
+New Features Added
+Game Timer – Displays how long the player has been playing.
+
+Live News Headline Cycling – Changes headline every time the snake eats food.
+
+Game Over Screen with Final Time & Score – Shows how long the player lasted.
+
