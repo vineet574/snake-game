@@ -25,6 +25,9 @@ pygame.display.set_caption("Snake Game with News Headlines")
 
 clock = pygame.time.Clock()
 
+eat_sound = pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.Sound('eat.wav')) if pygame.mixer.get_init() else None)
+game_over_sound = pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.Sound('gameover.wav')) if pygame.mixer.get_init() else None)
+
 def fetch_headlines():
     url = "https://newsapi.org/v2/top-headlines?country=us&apiKey=YOUR_API_KEY"
     try:
@@ -49,9 +52,23 @@ def display_timer(start_time):
     timer_surface = font.render(f"Time: {elapsed_time}s", True, white)
     window.blit(timer_surface, [width - 140, 10])
 
+def display_best_score(best_score):
+    best_score_surface = font.render(f"Best: {best_score}", True, white)
+    window.blit(best_score_surface, [width // 2 - 40, 10])
+
+def display_headlines(headlines, offset):
+    y_pos = height - 30
+    x_pos = -offset
+    space = 50
+    for headline in headlines:
+        text_surface = headline_font.render(headline, True, white)
+        window.blit(text_surface, (x_pos, y_pos))
+        x_pos += text_surface.get_width() + space
+
 def game():
     game_over = False
     game_close = False
+    paused = False
 
     x = width / 2
     y = height / 2
@@ -66,13 +83,20 @@ def game():
     food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
 
     headlines = fetch_headlines()
-    current_headline = random.choice(headlines) if headlines else "No headlines available"
+    if not headlines:
+        headlines = ["No headlines available"]
+    headlines_to_scroll = headlines * 3
 
     start_time = time.time()
+    best_score = 0
+    scroll_offset = 0
+    scroll_speed = 2
 
     while not game_over:
 
         while game_close:
+            if pygame.mixer.get_init():
+                game_over_sound.play()
             window.fill(blue)
             elapsed_time = int(time.time() - start_time)
             message = font.render("You Lost! Press Q-Quit or C-Play Again", True, red)
@@ -90,23 +114,36 @@ def game():
                         game_close = False
                     if event.key == pygame.K_c:
                         game()
+                if event.type == pygame.QUIT:
+                    game_over = True
+                    game_close = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    dx = -block_size
-                    dy = 0
-                elif event.key == pygame.K_RIGHT:
-                    dx = block_size
-                    dy = 0
-                elif event.key == pygame.K_UP:
-                    dy = -block_size
-                    dx = 0
-                elif event.key == pygame.K_DOWN:
-                    dy = block_size
-                    dx = 0
+                if event.key == pygame.K_p:
+                    paused = not paused
+                if not paused:
+                    if event.key == pygame.K_LEFT and dx == 0:
+                        dx = -block_size
+                        dy = 0
+                    elif event.key == pygame.K_RIGHT and dx == 0:
+                        dx = block_size
+                        dy = 0
+                    elif event.key == pygame.K_UP and dy == 0:
+                        dy = -block_size
+                        dx = 0
+                    elif event.key == pygame.K_DOWN and dy == 0:
+                        dy = block_size
+                        dx = 0
+
+        if paused:
+            pause_text = font.render("Paused. Press P to Resume.", True, white)
+            window.blit(pause_text, [width // 4, height // 2])
+            pygame.display.update()
+            clock.tick(5)
+            continue
 
         if x >= width or x < 0 or y >= height or y < 0:
             game_close = True
@@ -115,10 +152,10 @@ def game():
         y += dy
         window.fill(blue)
         pygame.draw.rect(window, green, [food_x, food_y, block_size, block_size])
-        
+
         snake_head = [x, y]
         snake_list.append(snake_head)
-        
+
         if len(snake_list) > length:
             del snake_list[0]
 
@@ -128,18 +165,25 @@ def game():
 
         draw_snake(block_size, snake_list)
         display_score(length - 1)
+        display_best_score(best_score)
         display_timer(start_time)
 
-        headline_text = headline_font.render(current_headline, True, white)
-        window.blit(headline_text, [10, height - 30])
-        
+        scroll_offset += scroll_speed
+        total_width = sum(headline_font.size(h)[0] + 50 for h in headlines_to_scroll)
+        if scroll_offset > total_width:
+            scroll_offset = 0
+        display_headlines(headlines_to_scroll, scroll_offset)
+
         pygame.display.update()
 
         if x == food_x and y == food_y:
+            if pygame.mixer.get_init():
+                eat_sound.play()
             food_x = round(random.randrange(0, width - block_size) / 10.0) * 10.0
             food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
             length += 1
-            current_headline = random.choice(headlines) if headlines else "No headlines available"
+            if length - 1 > best_score:
+                best_score = length - 1
 
         clock.tick(speed)
 
