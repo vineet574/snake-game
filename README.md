@@ -28,3 +28,12 @@ Live News Headline Cycling – Changes headline every time the snake eats food.
 
 Game Over Screen with Final Time & Score – Shows how long the player lasted.
 
+Pause: Press P to toggle pause.
+
+Scrolling headlines: Multiple headlines scroll smoothly at the bottom.
+
+Best score: Displayed near the top center.
+
+Sound effects: You'll need eat.wav and gameover.wav files in your working directory or adjust to your sounds.
+
+If pygame.mixer isn't initialized or sound files are missing, sound calls will be skipped safely.
