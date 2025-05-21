@@ -37,3 +37,13 @@ Best score: Displayed near the top center.
 Sound effects: You'll need eat.wav and gameover.wav files in your working directory or adjust to your sounds.
 
 If pygame.mixer isn't initialized or sound files are missing, sound calls will be skipped safely.
+New Features Added
+Difficulty Selection at Start
+
+Restart Button with Mouse Click
+
+Game Over Animation (Flashing Screen)
+
+Local Best Score Saved Between Sessions
+
+Improved Pausing Feedback
