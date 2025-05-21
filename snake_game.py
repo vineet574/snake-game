@@ -15,7 +15,6 @@ green = (0, 255, 0)
 blue = (50, 153, 213)
 
 block_size = 10
-speed = 15
 
 font = pygame.font.SysFont("bahnschrift", 25)
 headline_font = pygame.font.SysFont("comicsansms", 15)
@@ -25,8 +24,15 @@ pygame.display.set_caption("Snake Game with News Headlines")
 
 clock = pygame.time.Clock()
 
-eat_sound = pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.Sound('eat.wav')) if pygame.mixer.get_init() else None)
-game_over_sound = pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.Sound('gameover.wav')) if pygame.mixer.get_init() else None)
+# Load sounds if mixer initialized
+eat_sound = None
+game_over_sound = None
+if pygame.mixer.get_init():
+    try:
+        eat_sound = pygame.mixer.Sound('eat.wav')
+        game_over_sound = pygame.mixer.Sound('gameover.wav')
+    except:
+        pass
 
 def fetch_headlines():
     url = "https://newsapi.org/v2/top-headlines?country=us&apiKey=YOUR_API_KEY"
@@ -35,7 +41,7 @@ def fetch_headlines():
         data = response.json()
         articles = data.get("articles", [])
         headlines = [article["title"] for article in articles if "title" in article]
-        return headlines
+        return headlines if headlines else ["No headlines available"]
     except:
         return ["Unable to fetch news"]
 
@@ -65,7 +71,47 @@ def display_headlines(headlines, offset):
         window.blit(text_surface, (x_pos, y_pos))
         x_pos += text_surface.get_width() + space
 
+def load_best_score():
+    try:
+        with open("best_score.txt", "r") as f:
+            return int(f.read())
+    except:
+        return 0
+
+def save_best_score(score):
+    try:
+        with open("best_score.txt", "w") as f:
+            f.write(str(score))
+    except:
+        pass
+
+def select_difficulty():
+    selecting = True
+    selected_speed = None
+    while selecting:
+        window.fill(blue)
+        title = font.render("Select Difficulty: 1-Easy 2-Medium 3-Hard", True, white)
+        window.blit(title, (width // 10, height // 3))
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    selected_speed = 10
+                    selecting = False
+                elif event.key == pygame.K_2:
+                    selected_speed = 15
+                    selecting = False
+                elif event.key == pygame.K_3:
+                    selected_speed = 25
+                    selecting = False
+    return selected_speed
+
 def game():
+    global block_size
+    speed = select_difficulty()
     game_over = False
     game_close = False
     paused = False
@@ -83,23 +129,30 @@ def game():
     food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
 
     headlines = fetch_headlines()
-    if not headlines:
-        headlines = ["No headlines available"]
     headlines_to_scroll = headlines * 3
 
     start_time = time.time()
-    best_score = 0
+    best_score = load_best_score()
     scroll_offset = 0
     scroll_speed = 2
+    flicker = False
+    flicker_timer = 0
 
     while not game_over:
 
         while game_close:
-            if pygame.mixer.get_init():
+            if pygame.mixer.get_init() and game_over_sound:
                 game_over_sound.play()
             window.fill(blue)
             elapsed_time = int(time.time() - start_time)
-            message = font.render("You Lost! Press Q-Quit or C-Play Again", True, red)
+            if flicker:
+                message = font.render("You Lost! Press Q-Quit or C-Play Again", True, red)
+            else:
+                message = font.render("You Lost! Press Q-Quit or C-Play Again", True, white)
+            flicker_timer += 1
+            if flicker_timer > 10:
+                flicker = not flicker
+                flicker_timer = 0
             score_text = font.render(f"Final Score: {length - 1}", True, white)
             time_text = font.render(f"Time Survived: {elapsed_time}s", True, white)
             window.blit(message, [width / 6, height / 3])
@@ -108,16 +161,18 @@ def game():
             pygame.display.update()
 
             for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
+                if event.type == pygame.QUIT:
+                    game_over = True
+                    game_close = False
+                elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_q:
                         game_over = True
                         game_close = False
                     if event.key == pygame.K_c:
                         game()
-                if event.type == pygame.QUIT:
-                    game_over = True
-                    game_close = False
-
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    game()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
@@ -139,6 +194,7 @@ def game():
                         dx = 0
 
         if paused:
+            window.fill(blue)
             pause_text = font.render("Paused. Press P to Resume.", True, white)
             window.blit(pause_text, [width // 4, height // 2])
             pygame.display.update()
@@ -177,13 +233,14 @@ def game():
         pygame.display.update()
 
         if x == food_x and y == food_y:
-            if pygame.mixer.get_init():
+            if pygame.mixer.get_init() and eat_sound:
                 eat_sound.play()
             food_x = round(random.randrange(0, width - block_size) / 10.0) * 10.0
             food_y = round(random.randrange(0, height - block_size) / 10.0) * 10.0
             length += 1
             if length - 1 > best_score:
                 best_score = length - 1
+                save_best_score(best_score)
 
         clock.tick(speed)
 
